@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Full Credit Card Database with Decimal rates for precision
+# Full Credit Card Database with Decimal rates for precision (from conversation history)
 CREDIT_CARDS_DB = {
     "hdfc_infinia": {
         "name": "HDFC Infinia Metal",
@@ -344,47 +344,33 @@ CREDIT_CARDS_DB = {
     }
 }
 
-# MERCHANT_CATEGORIES (full from previous versions)
+# MERCHANT_CATEGORIES (complete from previous versions)
 MERCHANT_CATEGORIES = {
-    # Food Delivery & Dining
     "swiggy": "dining", "zomato": "dining", "dominos": "dining", "pizza hut": "dining",
     "mcdonald": "dining", "kfc": "dining", "burger king": "dining", "subway": "dining",
     "starbucks": "dining", "cafe coffee day": "dining", "dunkin": "dining",
     "haldiram": "dining", "bikanervala": "dining",
-    
-    # Grocery & Supermarkets  
     "bigbasket": "grocery", "grofers": "grocery", "blinkit": "grocery", "zepto": "grocery",
     "dmart": "grocery", "reliance fresh": "grocery", "spencer": "grocery", "more": "grocery",
     "metro": "grocery", "star bazaar": "grocery", "heritage": "grocery", "easyday": "grocery",
     "grocery store": "grocery",
-    
-    # Fuel Stations
     "indian oil": "fuel", "hp petrol": "fuel", "bharat petroleum": "fuel", "shell": "fuel",
     "reliance petrol": "fuel", "essar": "fuel", "nayara": "fuel",
-    
-    # Movies & Entertainment
     "pvr": "movies", "inox": "movies", "cinepolis": "movies", "carnival": "movies",
     "bookmyshow": "movies", "paytm movies": "movies", "pvr cinemas": "movies",
-    
-    # E-commerce
     "amazon": "ecommerce", "flipkart": "ecommerce", "myntra": "ecommerce", "ajio": "ecommerce",
     "nykaa": "ecommerce", "jabong": "ecommerce", "snapdeal": "ecommerce", "shopclues": "ecommerce",
     "tata cliq": "ecommerce", "reliance digital": "ecommerce", "croma": "ecommerce",
-    
-    # Utilities & Bills
     "airtel": "utilities", "jio": "utilities", "vodafone": "utilities", "bsnl": "utilities",
     "bses": "utilities", "adani": "utilities", "tata power": "utilities", "reliance energy": "utilities",
     "mahanagar gas": "utilities", "indraprastha gas": "utilities",
-    
-    # Travel
     "irctc": "travel", "makemytrip": "travel", "goibibo": "travel", "cleartrip": "travel",
     "yatra": "travel", "ixigo": "travel", "uber": "travel", "ola": "travel", "rapido": "travel",
     "indigo": "travel", "air india": "travel", "spicejet": "travel", "vistara": "travel"
 }
 
-# VALIDATION_SCENARIOS (full from previous versions)
+# VALIDATION_SCENARIOS (complete 30 tests from previous versions)
 VALIDATION_SCENARIOS = [
-    # BASIC CATEGORY OPTIMIZATION (Tests 1-10)
     {
         "test_id": 1,
         "merchant": "Swiggy",
@@ -395,9 +381,286 @@ VALIDATION_SCENARIOS = [
         "expected_reward": 66.0,
         "description": "Dining: Diners Black 6.6% > SBI 5% > ACE 4%"
     },
-    # ... (Add all 30 test cases here from the conversation history - to avoid length, I've added a placeholder note. In your real code, list all 30 as in the history)
-    # Note: For complete code, paste the full 30 scenarios from your conversation history here.
-    # Example for one:
+    {
+        "test_id": 2,
+        "merchant": "BigBasket",
+        "amount": 1500,
+        "user_cards": ["hsbc_live_plus", "sbi_cashback", "hdfc_millennia"],
+        "current_month_spent": {},
+        "expected_winner": "hsbc_live_plus",
+        "expected_reward": 150.0,
+        "description": "Grocery: HSBC Live+ 10% > SBI 5% > Millennia 1%"
+    },
+    {
+        "test_id": 3,
+        "merchant": "Amazon",
+        "amount": 3000,
+        "user_cards": ["amazon_pay_icici", "flipkart_axis", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "amazon_pay_icici",
+        "expected_reward": 150.0,
+        "description": "E-commerce: Amazon Pay ICICI 5% > SBI 5% > Flipkart 1.5%"
+    },
+    {
+        "test_id": 4,
+        "merchant": "Indian Oil",
+        "amount": 2000,
+        "user_cards": ["sc_super_value", "hdfc_infinia", "axis_ace"],
+        "current_month_spent": {},
+        "expected_winner": "sc_super_value",
+        "expected_reward": 100.0,
+        "description": "Fuel: SC Super Value 5% > Infinia 3.33% > ACE 1.5%"
+    },
+    {
+        "test_id": 5,
+        "merchant": "MakeMyTrip",
+        "amount": 10000,
+        "user_cards": ["axis_atlas", "hdfc_infinia", "rbl_world_safari"],
+        "current_month_spent": {},
+        "expected_winner": "axis_atlas",
+        "expected_reward": 1000.0,
+        "description": "Travel: Atlas 10% > Infinia 3.33% > RBL 1.87%"
+    },
+    {
+        "test_id": 6,
+        "merchant": "PVR Cinemas",
+        "amount": 800,
+        "user_cards": ["hdfc_diners_black", "indusind_pinnacle", "icici_coral"],
+        "current_month_spent": {},
+        "expected_winner": "indusind_pinnacle",
+        "expected_reward": 700.0,
+        "description": "Movies: Pinnacle BOGO ₹700 > Diners BOGO ₹500 > Coral 25%"
+    },
+    {
+        "test_id": 7,
+        "merchant": "Nykaa",
+        "amount": 2000,
+        "user_cards": ["hdfc_regalia_gold", "sbi_cashback", "hdfc_millennia"],
+        "current_month_spent": {},
+        "expected_winner": "hdfc_regalia_gold",
+        "expected_reward": 220.0,
+        "description": "E-commerce partner: Regalia Gold 11% > SBI 5% > Millennia 5%"
+    },
+    {
+        "test_id": 8,
+        "merchant": "Dominos",
+        "amount": 600,
+        "user_cards": ["sbi_prime", "axis_ace", "icici_coral"],
+        "current_month_spent": {},
+        "expected_winner": "axis_ace",
+        "expected_reward": 24.0,
+        "description": "Dining: ACE 4% > SBI Prime 2.5% > Coral 1%"
+    },
+    {
+        "test_id": 9,
+        "merchant": "Flipkart",
+        "amount": 4000,
+        "user_cards": ["flipkart_axis", "sbi_cashback", "amazon_pay_icici"],
+        "current_month_spent": {},
+        "expected_winner": "flipkart_axis",
+        "expected_reward": 200.0,
+        "description": "E-commerce: Flipkart Axis 5% > SBI 5% > Amazon Pay 1%"
+    },
+    {
+        "test_id": 10,
+        "merchant": "Airtel",
+        "amount": 1000,
+        "user_cards": ["axis_ace", "sc_super_value", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "axis_ace",
+        "expected_reward": 50.0,
+        "description": "Utilities: ACE 5% > SC Super Value 5% > SBI 5%"
+    },
+    {
+        "test_id": 11,
+        "merchant": "Swiggy",
+        "amount": 800,
+        "user_cards": ["hdfc_diners_black", "axis_ace"],
+        "current_month_spent": {"HDFC Diners Club Black_dining": 950},
+        "expected_winner": "axis_ace",
+        "expected_reward": 32.0,
+        "description": "Dining with Diners cap reached: ACE 4% wins"
+    },
+    {
+        "test_id": 12,
+        "merchant": "BigBasket",
+        "amount": 2000,
+        "user_cards": ["hsbc_live_plus", "sbi_cashback"],
+        "current_month_spent": {"HSBC Live+ Cashback_grocery": 900},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 100.0,
+        "description": "Grocery: SBI 5% > HSBC partial cap ₹100 remaining"
+    },
+    {
+        "test_id": 13,
+        "merchant": "Indian Oil",
+        "amount": 3000,
+        "user_cards": ["sc_super_value", "hdfc_infinia"],
+        "current_month_spent": {"Standard Chartered Super Value Titanium_fuel": 180},
+        "expected_winner": "hdfc_infinia",
+        "expected_reward": 99.9,
+        "description": "Fuel: Infinia 3.33% > SC cap nearly reached"
+    },
+    {
+        "test_id": 14,
+        "merchant": "Airtel",
+        "amount": 500,
+        "user_cards": ["axis_ace", "sc_super_value", "sbi_cashback"],
+        "current_month_spent": {"Axis ACE_utilities": 450},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 25.0,
+        "description": "Utilities with ACE cap reached: SBI 5% > SC Super Value 5%"
+    },
+    {
+        "test_id": 15,
+        "merchant": "Flipkart",
+        "amount": 5000,
+        "user_cards": ["flipkart_axis", "sbi_cashback"],
+        "current_month_spent": {"Flipkart Axis Bank_ecommerce": 3500},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 250.0,
+        "description": "E-commerce: SBI 5% > Flipkart cap reached"
+    },
+    {
+        "test_id": 16,
+        "merchant": "MakeMyTrip",
+        "amount": 50000,
+        "user_cards": ["axis_atlas", "hdfc_infinia"],
+        "current_month_spent": {},
+        "expected_winner": "axis_atlas",
+        "expected_reward": 5000.0,
+        "description": "Large travel: Atlas 10% > Infinia 3.33%"
+    },
+    {
+        "test_id": 17,
+        "merchant": "Amazon",
+        "amount": 25000,
+        "user_cards": ["amazon_pay_icici", "hdfc_infinia"],
+        "current_month_spent": {},
+        "expected_winner": "amazon_pay_icici",
+        "expected_reward": 1250.0,
+        "description": "Large e-commerce: Amazon Pay 5% > Infinia 3.33%"
+    },
+    {
+        "test_id": 18,
+        "merchant": "Indian Oil",
+        "amount": 10000,
+        "user_cards": ["sc_super_value", "hdfc_infinia"],
+        "current_month_spent": {},
+        "expected_winner": "hdfc_infinia",
+        "expected_reward": 333.0,
+        "description": "Large fuel: Infinia unlimited 3.33% > SC cap ₹200"
+    },
+    {
+        "test_id": 19,
+        "merchant": "BigBasket",
+        "amount": 15000,
+        "user_cards": ["hsbc_live_plus", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 750.0,
+        "description": "Large grocery: SBI unlimited 5% > HSBC cap ₹1000"
+    },
+    {
+        "test_id": 20,
+        "merchant": "Swiggy",
+        "amount": 8000,
+        "user_cards": ["hdfc_diners_black", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 400.0,
+        "description": "Large dining: SBI unlimited 5% > Diners cap ₹1000"
+    },
+    {
+        "test_id": 21,
+        "merchant": "Swiggy",
+        "amount": 1000,
+        "user_cards": ["hdfc_infinia", "hdfc_diners_black", "hdfc_millennia"],
+        "current_month_spent": {},
+        "expected_winner": "hdfc_diners_black",
+        "expected_reward": 66.0,
+        "description": "HDFC cards: Diners 6.6% > Millennia 5% > Infinia 3.33%"
+    },
+    {
+        "test_id": 22,
+        "merchant": "Amazon",
+        "amount": 2000,
+        "user_cards": ["axis_ace", "flipkart_axis", "axis_magnus"],
+        "current_month_spent": {},
+        "expected_winner": "axis_magnus",
+        "expected_reward": 96.0,
+        "description": "Axis cards: Magnus 4.8% > ACE 1.5% = Flipkart 1.5%"
+    },
+    {
+        "test_id": 23,
+        "merchant": "BigBasket",
+        "amount": 1000,
+        "user_cards": ["sbi_cashback", "sbi_prime", "sbi_simplyclick"],
+        "current_month_spent": {},
+        "expected_winner": "sbi_cashback",
+        "expected_reward": 50.0,
+        "description": "SBI cards: Cashback 5% > Prime 2.5% > SimplyClick 0.25%"
+    },
+    {
+        "test_id": 24,
+        "merchant": "Starbucks",
+        "amount": 200,
+        "user_cards": ["hdfc_diners_black", "axis_ace"],
+        "current_month_spent": {},
+        "expected_winner": "hdfc_diners_black",
+        "expected_reward": 13.2,
+        "description": "Small dining: Diners 6.6% > ACE 4%"
+    },
+    {
+        "test_id": 25,
+        "merchant": "Indian Oil",
+        "amount": 500,
+        "user_cards": ["sc_super_value", "axis_ace"],
+        "current_month_spent": {},
+        "expected_winner": "sc_super_value",
+        "expected_reward": 25.0,
+        "description": "Small fuel: SC Super Value 5% > ACE 1.5%"
+    },
+    {
+        "test_id": 26,
+        "merchant": "Metro",
+        "amount": 300,
+        "user_cards": ["hsbc_live_plus", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "hsbc_live_plus",
+        "expected_reward": 30.0,
+        "description": "Small grocery: HSBC Live+ 10% > SBI 5%"
+    },
+    {
+        "test_id": 27,
+        "merchant": "Airtel",
+        "amount": 1000,
+        "user_cards": ["hdfc_millennia", "axis_ace"],
+        "current_month_spent": {},
+        "expected_winner": "axis_ace",
+        "expected_reward": 50.0,
+        "description": "Utilities: ACE 5% > Millennia 0% (excluded)"
+    },
+    {
+        "test_id": 28,
+        "merchant": "Indian Oil",
+        "amount": 1000,
+        "user_cards": ["hsbc_live_plus", "axis_ace"],
+        "current_month_spent": {},
+        "expected_winner": "axis_ace",
+        "expected_reward": 15.0,
+        "description": "Fuel: ACE 1.5% > HSBC 0% (no fuel benefits)"
+    },
+    {
+        "test_id": 29,
+        "merchant": "Grocery Store",
+        "amount": 1000,
+        "user_cards": ["amazon_pay_icici", "icici_coral"],
+        "current_month_spent": {},
+        "expected_winner": "amazon_pay_icici",
+        "expected_reward": 10.0,
+        "description": "Generic grocery: Amazon Pay 1% (free) > Coral 0.5% (₹500 fee)"
+    },
     {
         "test_id": 30,
         "merchant": "BookMyShow",
@@ -409,6 +672,8 @@ VALIDATION_SCENARIOS = [
         "description": "Movies: Coral 25% discount > SimplyClick 2.5% > ACE 1.5%"
     }
 ]
+
+# Rest of the code (functions, initialize_session_state, main) - same as the previous complete version
 
 def detect_merchant_category(merchant_name):
     merchant_lower = merchant_name.lower().strip()

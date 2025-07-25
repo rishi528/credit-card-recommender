@@ -417,6 +417,82 @@ MERCHANT_CATEGORIES = {
     "vistara": "travel"
 }
 
+# Validation Test Scenarios
+VALIDATION_SCENARIOS = [
+    {
+        "merchant": "Swiggy",
+        "amount": 1000,
+        "user_cards": ["hdfc_diners_black", "axis_ace", "sbi_cashback"],
+        "current_month_spent": {"HDFC Diners Club Black_dining": 500},
+        "expected_winner": "hdfc_diners_black",
+        "expected_reward": 66.0,
+        "description": "Weekend dining: Diners Black 6.6% vs ACE 4% vs SBI 5%"
+    },
+    {
+        "merchant": "Indian Oil",
+        "amount": 2000,
+        "user_cards": ["sc_super_value", "hdfc_infinia", "axis_ace"],
+        "current_month_spent": {"Standard Chartered Super Value Titanium_fuel": 150},
+        "expected_winner": "sc_super_value",
+        "expected_reward": 50.0,
+        "description": "Fuel: SC Super Value 5% (₹50 remaining cap) vs others"
+    },
+    {
+        "merchant": "Amazon",
+        "amount": 3000,
+        "user_cards": ["amazon_pay_icici", "flipkart_axis", "sbi_cashback"],
+        "current_month_spent": {},
+        "expected_winner": "amazon_pay_icici",
+        "expected_reward": 150.0,
+        "description": "E-commerce: Amazon Pay ICICI 5% vs others"
+    },
+    {
+        "merchant": "BigBasket",
+        "amount": 1500,
+        "user_cards": ["hsbc_live_plus", "sbi_cashback", "hdfc_millennia"],
+        "current_month_spent": {"HSBC Live+ Cashback_grocery": 500},
+        "expected_winner": "hsbc_live_plus",
+        "expected_reward": 150.0,
+        "description": "Grocery: HSBC Live+ 10% vs SBI 5% vs Millennia 1%"
+    },
+    {
+        "merchant": "PVR Cinemas",
+        "amount": 800,
+        "user_cards": ["hdfc_diners_black", "indusind_pinnacle", "icici_coral"],
+        "current_month_spent": {},
+        "expected_winner": "hdfc_diners_black",
+        "expected_reward": 100.0,
+        "description": "Movies: Diners Black BOGO vs Pinnacle BOGO vs Coral discount"
+    },
+    {
+        "merchant": "Airtel",
+        "amount": 500,
+        "user_cards": ["axis_ace", "sc_super_value", "sbi_cashback"],
+        "current_month_spent": {"Axis ACE_utilities": 400},
+        "expected_winner": "sc_super_value",
+        "expected_reward": 25.0,
+        "description": "Utilities: ACE cap reached, SC Super Value 5% vs SBI 5%"
+    },
+    {
+        "merchant": "MakeMyTrip",
+        "amount": 10000,
+        "user_cards": ["hdfc_infinia", "axis_atlas", "rbl_world_safari"],
+        "current_month_spent": {},
+        "expected_winner": "axis_atlas",
+        "expected_reward": 1000.0,
+        "description": "Travel: Atlas 10% travel vs Infinia 3.33% vs RBL 1.87%"
+    },
+    {
+        "merchant": "DMart",
+        "amount": 2000,
+        "user_cards": ["hsbc_live_plus", "sbi_prime", "hdfc_regalia_gold"],
+        "current_month_spent": {"HSBC Live+ Cashback_grocery": 900},
+        "expected_winner": "hsbc_live_plus",
+        "expected_reward": 100.0,
+        "description": "Grocery with partial cap: HSBC Live+ ₹100 remaining vs others"
+    }
+]
+
 def detect_merchant_category(merchant_name):
     """Enhanced merchant category detection"""
     merchant_lower = merchant_name.lower()
@@ -503,6 +579,51 @@ def recommend_best_card(user_cards, merchant_name, amount, monthly_spent):
     recommendations.sort(key=lambda x: (x["reward_value"], -x["annual_fee"]), reverse=True)
     return recommendations, category
 
+def run_validation_tests():
+    """Run validation tests and return results"""
+    results = []
+    
+    for scenario in VALIDATION_SCENARIOS:
+        try:
+            recommendations, category = recommend_best_card(
+                scenario["user_cards"],
+                scenario["merchant"],
+                scenario["amount"],
+                scenario["current_month_spent"]
+            )
+            
+            if not recommendations:
+                status = "❌ FAIL - No recommendations"
+                details = "No cards returned"
+            else:
+                top_card = recommendations[0]
+                card_match = top_card["card_id"] == scenario["expected_winner"]
+                reward_match = abs(top_card["reward_value"] - scenario["expected_reward"]) < 1.0
+                
+                if card_match and reward_match:
+                    status = "✅ PASS"
+                    details = f"Got {top_card['card_name']} ₹{top_card['reward_value']:.2f}"
+                else:
+                    status = "❌ FAIL"
+                    details = f"Expected {scenario['expected_winner']} ₹{scenario['expected_reward']:.2f}, Got {top_card['card_id']} ₹{top_card['reward_value']:.2f}"
+            
+            results.append({
+                "Scenario": scenario["description"],
+                "Expected": f"{scenario['expected_winner']} ₹{scenario['expected_reward']:.2f}",
+                "Status": status,
+                "Details": details
+            })
+            
+        except Exception as e:
+            results.append({
+                "Scenario": scenario["description"],
+                "Expected": f"{scenario['expected_winner']} ₹{scenario['expected_reward']:.2f}",
+                "Status": "❌ ERROR",
+                "Details": str(e)
+            })
+    
+    return results
+
 def initialize_session_state():
     """Initialize session state variables"""
     if 'user_cards' not in st.session_state:
@@ -511,6 +632,8 @@ def initialize_session_state():
         st.session_state.monthly_spent = {}
     if 'transaction_history' not in st.session_state:
         st.session_state.transaction_history = []
+    if 'validation_mode' not in st.session_state:
+        st.session_state.validation_mode = False
 
 def main():
     initialize_session_state()
@@ -563,10 +686,48 @@ def main():
             st.success("Monthly data reset!")
             st.rerun()
         
+        # Validation mode toggle
+        st.markdown("---")
+        st.session_state.validation_mode = st.checkbox("🧪 Enable Validation Mode")
+        
         # Quick stats
         if st.session_state.transaction_history:
             total_rewards = sum(t['reward'] for t in st.session_state.transaction_history)
             st.metric("This Month's Rewards", f"₹{total_rewards:.2f}")
+    
+    # Validation Mode Display
+    if st.session_state.validation_mode:
+        st.header("🔬 Recommendation Engine Validation")
+        
+        if st.button("🚀 Run All Validation Tests"):
+            with st.spinner("Running comprehensive validation tests..."):
+                validation_results = run_validation_tests()
+            
+            # Display results
+            df_results = pd.DataFrame(validation_results)
+            st.dataframe(df_results, use_container_width=True)
+            
+            # Summary statistics
+            total_tests = len(validation_results)
+            passed_tests = sum(1 for r in validation_results if r["Status"] == "✅ PASS")
+            accuracy = (passed_tests / total_tests) * 100 if total_tests > 0 else 0
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Tests", total_tests)
+            with col2:
+                st.metric("Passed", passed_tests)
+            with col3:
+                st.metric("Accuracy", f"{accuracy:.1f}%")
+            
+            if accuracy >= 95:
+                st.success("🎉 Excellent! Recommendation engine is highly accurate.")
+            elif accuracy >= 85:
+                st.warning("⚠️ Good accuracy, but some edge cases need attention.")
+            else:
+                st.error("❌ Poor accuracy. Recommendation logic needs review.")
+        
+        st.markdown("---")
     
     # Main interface
     col1, col2 = st.columns([2, 1])
@@ -806,9 +967,9 @@ def main():
     st.markdown("---")
     st.markdown(
         """
-        **🚀 Smart Credit Card Recommender MVP**  
-        Powered by comprehensive Indian credit card database | 
-        No sensitive data stored | Real-time optimization
+        **🚀 Smart Credit Card Recommender MVP v2.0**  
+        Features: 20 Indian credit cards | Real-time optimization | Built-in validation | 
+        No sensitive data stored | Production-ready architecture
         """
     )
 

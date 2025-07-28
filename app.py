@@ -1,6 +1,6 @@
 ################################################################################
-#           ML Credit Card Recommender - Complete Updated Version 5.4         #
-#                    (All Issues Fixed - Emergency Reset Added)               #
+#           ML Credit Card Recommender - Session State Fixed Version 5.5      #
+#                    (KeyError Issues Completely Resolved)                    #
 ################################################################################
 
 import streamlit as st
@@ -23,7 +23,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  PAGE CONFIG & SESSION STATE
+#  PAGE CONFIG & SESSION STATE INITIALIZATION
 # ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="ML Credit Card Recommender", 
@@ -31,11 +31,15 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize all session state variables
-session_vars = ['trained_model', 'training_metrics', 'validation_metrics', 'test_metrics']
-for var in session_vars:
-    if var not in st.session_state:
-        st.session_state[var] = None
+# FIXED: Complete session state initialization with all required keys
+required_session_keys = [
+    'trained_model', 'training_metrics', 'validation_metrics', 'test_metrics',
+    'train_df', 'val_df', 'test_df'  # Added missing dataset keys
+]
+
+for key in required_session_keys:
+    if key not in st.session_state:
+        st.session_state[key] = None
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  FEATURE ENGINEERING & ML MODEL
@@ -198,6 +202,9 @@ with st.sidebar:
         # Clear ALL session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        # Reinitialize required keys
+        for key in required_session_keys:
+            st.session_state[key] = None
         gc.collect()
         st.success("🔄 All data cleared! Page will refresh.")
         st.rerun()
@@ -318,7 +325,8 @@ with tab_data:
 with tab_train:
     st.header("🎯 Model Training")
     
-    if 'train_df' in st.session_state:
+    # FIXED: Proper session state checking
+    if st.session_state.train_df is not None:
         train_data = st.session_state.train_df
         
         # Quick data overview
@@ -336,17 +344,17 @@ with tab_train:
         
         if st.button("🚀 Train Model", type="primary"):
             # CRITICAL: Clear any cached model instances
-            if 'trained_model' in st.session_state:
-                del st.session_state.trained_model
+            if st.session_state.trained_model is not None:
+                st.session_state.trained_model = None
             
             # Force garbage collection
             gc.collect()
             
             # Data consistency check
             datasets = [train_data]
-            if 'val_df' in st.session_state:
+            if st.session_state.val_df is not None:
                 datasets.append(st.session_state.val_df)
-            if 'test_df' in st.session_state:
+            if st.session_state.test_df is not None:
                 datasets.append(st.session_state.test_df)
             
             all_labels = set()
@@ -409,7 +417,7 @@ with tab_train:
 with tab_evaluate:
     st.header("📈 Model Evaluation")
     
-    if st.session_state.trained_model:
+    if st.session_state.trained_model is not None:
         model = st.session_state.trained_model
         metrics = st.session_state.training_metrics
         
@@ -427,14 +435,14 @@ with tab_evaluate:
         
         # Dataset evaluation
         eval_options = []
-        if 'val_df' in st.session_state:
+        if st.session_state.val_df is not None:
             eval_options.append("Validation")
-        if 'test_df' in st.session_state:
+        if st.session_state.test_df is not None:
             eval_options.append("Test")
         
         if eval_options:
             selected = st.selectbox("Choose Dataset", eval_options)
-            eval_df = st.session_state[f'{selected.lower()}_df']
+            eval_df = st.session_state.val_df if selected == "Validation" else st.session_state.test_df
             
             if st.button(f"Evaluate on {selected} Set"):
                 with st.spinner(f"Evaluating..."):
@@ -494,7 +502,7 @@ with tab_evaluate:
 with tab_predict:
     st.header("🔮 Make Predictions")
     
-    if st.session_state.trained_model:
+    if st.session_state.trained_model is not None:
         st.subheader("Single Prediction")
         
         # Input form
@@ -570,7 +578,7 @@ with tab_predict:
                 
                 st.write("**💡 Suggested Fix:** Use Emergency Reset and retrain")
                 
-        # Batch predictions
+        # FIXED: Batch predictions with proper session state checking
         st.subheader("📋 Batch Predictions")
         batch_file = st.file_uploader("Upload batch file", type=['csv', 'xlsx'])
         if batch_file and st.button("Process Batch"):
@@ -580,38 +588,54 @@ with tab_predict:
                 batch_df['recommended_card'] = 'PLACEHOLDER'
             
             try:
-                X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df)
-                batch_pred, batch_prob = st.session_state.trained_model.predict(X_batch)
-                
-                batch_df['predicted_card'] = st.session_state.trained_model.label_encoder.inverse_transform(batch_pred)
-                batch_df['confidence'] = np.max(batch_prob, axis=1)
-                
-                st.success(f"✅ Processed {len(batch_df)} predictions")
-                st.dataframe(batch_df[['user_id', 'predicted_card', 'confidence']])
-                
-                # Download results
-                csv = batch_df.to_csv(index=False)
-                st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+                # FIXED: Safe session state access
+                if st.session_state.trained_model is not None:
+                    X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df)
+                    batch_pred, batch_prob = st.session_state.trained_model.predict(X_batch)
+                    
+                    batch_df['predicted_card'] = st.session_state.trained_model.label_encoder.inverse_transform(batch_pred)
+                    batch_df['confidence'] = np.max(batch_prob, axis=1)
+                    
+                    st.success(f"✅ Processed {len(batch_df)} predictions")
+                    
+                    # Display results with proper column checking
+                    display_cols = ['user_id', 'predicted_card', 'confidence']
+                    if 'user_id' not in batch_df.columns:
+                        display_cols = ['predicted_card', 'confidence']
+                    
+                    st.dataframe(batch_df[display_cols])
+                    
+                    # Download results
+                    csv = batch_df.to_csv(index=False)
+                    st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+                else:
+                    st.error("❌ No trained model found. Please train a model first.")
+                    
             except Exception as e:
                 st.error(f"Batch processing failed: {str(e)}")
+                st.write("**🔍 Debug Info:**")
+                st.write(f"- Batch file shape: {batch_df.shape}")
+                st.write(f"- Columns: {list(batch_df.columns)}")
+                st.write(f"- Trained model exists: {st.session_state.trained_model is not None}")
     else:
         st.warning("Train a model first!")
 
 # Performance Summary in Sidebar
-if st.session_state.trained_model:
+if st.session_state.trained_model is not None:
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 Performance")
     
-    if st.session_state.training_metrics:
+    if st.session_state.training_metrics is not None:
         metrics = st.session_state.training_metrics
         st.sidebar.metric("Training", f"{metrics['train_accuracy']:.3f}")
     
-    if st.session_state.validation_metrics:
+    if st.session_state.validation_metrics is not None:
         st.sidebar.metric("Validation", f"{st.session_state.validation_metrics['accuracy']:.3f}")
     
-    if st.session_state.test_metrics:
+    if st.session_state.test_metrics is not None:
         st.sidebar.metric("Test", f"{st.session_state.test_metrics['accuracy']:.3f}")
 
 # Footer
 st.markdown("---")
 st.markdown("💡 **Tip**: Use the Emergency Reset button if you encounter persistent errors.")
+st.markdown("🔍 **Debug**: Check session state keys - train_df, val_df, test_df should exist after upload.")

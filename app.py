@@ -306,6 +306,26 @@ with tab_train:
             st.plotly_chart(fig, use_container_width=True)
         
         if st.button("🚀 Train Model", type="primary"):
+                # Validate data consistency first
+            all_datasets = [train_data]
+            if 'val_df' in st.session_state:
+                all_datasets.append(st.session_state.val_df)
+            if 'test_df' in st.session_state:
+                all_datasets.append(st.session_state.test_df)
+            
+            # Get all unique labels across datasets
+            all_labels = set()
+            for df in all_datasets:
+                all_labels.update(df['recommended_card'].unique())
+            
+            train_labels = set(train_data['recommended_card'].unique())
+            missing_in_training = all_labels - train_labels
+            
+            if missing_in_training:
+                st.error(f"❌ Training data missing these labels: {missing_in_training}")
+                st.write("Please ensure your training data includes samples for all credit cards.")
+            else:
+                st.success("✅ All labels present in training data")
             with st.spinner(f"Training {model_type} model..."):
                 try:
                     # Initialize model

@@ -448,7 +448,7 @@ with tab_evaluate:
                     # Prediction confidence distribution
                     st.subheader("🎲 Prediction Confidence Distribution")
                     max_probs = np.max(eval_prob, axis=1)
-                    fig = px.histogram(x=max_probs, bins=30, 
+                    fig = px.histogram(x=max_probs, nbins=30, 
                                       title="Distribution of Maximum Prediction Probabilities")
                     fig.update_xaxes(title="Maximum Probability")
                     fig.update_yaxes(title="Count")

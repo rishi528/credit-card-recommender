@@ -1,6 +1,6 @@
 ################################################################################
-#           ML Credit Card Recommender - Session State Fixed Version 5.5      #
-#                    (KeyError Issues Completely Resolved)                    #
+#           ML Credit Card Recommender - Prediction Fixed Version 5.6         #
+#                    (Placeholder Issue Completely Resolved)                  #
 ################################################################################
 
 import streamlit as st
@@ -34,7 +34,7 @@ st.set_page_config(
 # FIXED: Complete session state initialization with all required keys
 required_session_keys = [
     'trained_model', 'training_metrics', 'validation_metrics', 'test_metrics',
-    'train_df', 'val_df', 'test_df'  # Added missing dataset keys
+    'train_df', 'val_df', 'test_df'
 ]
 
 for key in required_session_keys:
@@ -91,51 +91,44 @@ class MLRecommender:
     def _create_model(self):
         """Create model with explicit parameter validation"""
         model_type = self.model_type
-        params = self.hyperparameters.copy()  # Create a copy to avoid mutation
+        params = self.hyperparameters.copy()
         
         st.write(f"🔍 **Creating Model**: {model_type}")
         st.write(f"🔍 **Parameters**: {params}")
         
         try:
             if model_type == "Random Forest":
-                # Validate RF parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['n_estimators', 'max_depth', 'min_samples_split', 
                                      'min_samples_leaf', 'max_features']}
                 return RandomForestClassifier(**valid_params, random_state=42)
                 
             elif model_type == "Gradient Boosting":
-                # Validate GB parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['n_estimators', 'learning_rate', 'max_depth', 'subsample']}
                 return GradientBoostingClassifier(**valid_params, random_state=42)
                 
             elif model_type == "Logistic Regression":
-                # Validate LR parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['C', 'penalty', 'solver', 'max_iter']}
                 return LogisticRegression(**valid_params, random_state=42)
                 
             elif model_type == "SVM":
-                # Validate SVM parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['C', 'kernel', 'gamma', 'probability']}
                 return SVC(**valid_params, random_state=42)
                 
             elif model_type == "Decision Tree":
-                # Validate DT parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['max_depth', 'min_samples_split', 'min_samples_leaf', 'criterion']}
                 return DecisionTreeClassifier(**valid_params, random_state=42)
                 
             elif model_type == "K-Nearest Neighbors":
-                # Validate KNN parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['n_neighbors', 'weights', 'algorithm']}
                 return KNeighborsClassifier(**valid_params)
                 
             elif model_type == "Naive Bayes":
-                # Validate NB parameters
                 valid_params = {k: v for k, v in params.items() 
                               if k in ['var_smoothing']}
                 return GaussianNB(**valid_params)
@@ -147,8 +140,8 @@ class MLRecommender:
             st.write(f"**Attempted parameters**: {params}")
             raise e
     
-    def prepare_data(self, df):
-        """Prepare data for training/prediction"""
+    def prepare_data(self, df, is_training=True):
+        """FIXED: Prepare data with separate training/prediction logic"""
         df_processed, _ = engineer_features(df)
         
         spending_cols = ['Dining', 'Grocery', 'Fuel', 'E-commerce', 'Utilities', 'Travel', 'Movies', 'Other']
@@ -160,8 +153,18 @@ class MLRecommender:
                         'ecommerce_heavy', 'dining_heavy'])
         
         X = df_processed[feature_cols]
-        y = self.label_encoder.fit_transform(df['recommended_card']) if 'recommended_card' in df.columns else None
-        return X, y, feature_cols
+        
+        # CRITICAL FIX: Only fit encoder during training, not prediction
+        if 'recommended_card' in df.columns and is_training:
+            y = self.label_encoder.fit_transform(df['recommended_card'])
+            return X, y, feature_cols
+        elif 'recommended_card' in df.columns and not is_training:
+            # For evaluation data, transform using existing encoder
+            y = self.label_encoder.transform(df['recommended_card'])
+            return X, y, feature_cols
+        else:
+            # For prediction data, no labels needed
+            return X, None, feature_cols
     
     def train(self, X_train, y_train):
         """Train the model with bounds checking"""
@@ -199,10 +202,8 @@ st.markdown("**Advanced Machine Learning with Hyperparameter Tuning**")
 with st.sidebar:
     # EMERGENCY RESET BUTTON
     if st.button("🔥 EMERGENCY RESET", type="secondary"):
-        # Clear ALL session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        # Reinitialize required keys
         for key in required_session_keys:
             st.session_state[key] = None
         gc.collect()
@@ -211,7 +212,6 @@ with st.sidebar:
     
     st.header("🎛️ Model Configuration")
     
-    # Clear button to reset configuration
     if st.button("🔄 Reset Configuration"):
         for key in list(st.session_state.keys()):
             if key.startswith(('trained_', 'hyperparams_')):
@@ -225,7 +225,6 @@ with st.sidebar:
     
     st.subheader("🔧 Hyperparameters")
     
-    # FIXED: Clear hyperparameters for each model type to prevent mixing
     hyperparameters = {}
     
     if model_type == "Random Forest":
@@ -250,7 +249,7 @@ with st.sidebar:
             'C': st.slider("Regularization (C)", 0.01, 100.0, 1.0, 0.01),
             'penalty': st.selectbox("Penalty", ['l2', 'l1', 'elasticnet', None]),
             'solver': st.selectbox("Solver", ['liblinear', 'lbfgs', 'saga']),
-            'max_iter': 2000  # Fixed: Add this to prevent convergence issues
+            'max_iter': 2000
         }
         
     elif model_type == "SVM":
@@ -258,7 +257,7 @@ with st.sidebar:
         hyperparameters = {
             'C': st.slider("C Parameter", 0.1, 100.0, 1.0, 0.1),
             'kernel': kernel,
-            'probability': True  # Required for predict_proba
+            'probability': True
         }
         if kernel == 'rbf':
             hyperparameters['gamma'] = st.selectbox("Gamma", ['scale', 'auto'])
@@ -325,7 +324,6 @@ with tab_data:
 with tab_train:
     st.header("🎯 Model Training")
     
-    # FIXED: Proper session state checking
     if st.session_state.train_df is not None:
         train_data = st.session_state.train_df
         
@@ -343,11 +341,9 @@ with tab_train:
             st.plotly_chart(fig, use_container_width=True)
         
         if st.button("🚀 Train Model", type="primary"):
-            # CRITICAL: Clear any cached model instances
             if st.session_state.trained_model is not None:
                 st.session_state.trained_model = None
             
-            # Force garbage collection
             gc.collect()
             
             # Data consistency check
@@ -375,7 +371,7 @@ with tab_train:
                     
                     # Initialize and train with explicit parameters
                     recommender = MLRecommender(model_type, hyperparameters, scaler_type)
-                    X_train, y_train, feature_cols = recommender.prepare_data(train_data)
+                    X_train, y_train, feature_cols = recommender.prepare_data(train_data, is_training=True)
                     recommender.train(X_train, y_train)
                     
                     # Evaluate
@@ -447,7 +443,7 @@ with tab_evaluate:
             if st.button(f"Evaluate on {selected} Set"):
                 with st.spinner(f"Evaluating..."):
                     try:
-                        X_eval, y_eval, _ = model.prepare_data(eval_df)
+                        X_eval, y_eval, _ = model.prepare_data(eval_df, is_training=False)
                         eval_pred, eval_prob = model.predict(X_eval)
                         
                         accuracy = accuracy_score(y_eval, eval_pred)
@@ -481,11 +477,11 @@ with tab_evaluate:
                                                      output_dict=True)
                         st.dataframe(pd.DataFrame(report).transpose().round(3))
                         
-                        # FIXED: Prediction confidence distribution
+                        # Prediction confidence distribution
                         try:
                             max_probs = np.max(eval_prob, axis=1)
                             if len(max_probs) > 0:
-                                fig = px.histogram(x=max_probs, nbins=30,  # Fixed: Use nbins instead of bins
+                                fig = px.histogram(x=max_probs, nbins=30,
                                                   title="Distribution of Maximum Prediction Probabilities")
                                 fig.update_xaxes(title="Maximum Probability")
                                 fig.update_yaxes(title="Count")
@@ -498,7 +494,7 @@ with tab_evaluate:
     else:
         st.warning("Train a model first!")
 
-# Prediction Tab
+# Prediction Tab - MAIN FIX HERE
 with tab_predict:
     st.header("🔮 Make Predictions")
     
@@ -519,48 +515,63 @@ with tab_predict:
             other = st.number_input("Other (₹)", 0, 50000, 5000, 100)
         
         if st.button("🎯 Get Recommendation"):
+            # CRITICAL FIX: Don't include recommended_card in prediction data
             pred_data = pd.DataFrame({
-                'user_id': [999], 'Dining': [dining], 'Grocery': [grocery], 'Fuel': [fuel],
-                'E-commerce': [ecommerce], 'Utilities': [utilities], 'Travel': [travel],
-                'Movies': [movies], 'Other': [other], 'recommended_card': ['PLACEHOLDER']
+                'user_id': [999], 
+                'Dining': [dining], 
+                'Grocery': [grocery], 
+                'Fuel': [fuel],
+                'E-commerce': [ecommerce], 
+                'Utilities': [utilities], 
+                'Travel': [travel],
+                'Movies': [movies], 
+                'Other': [other]
+                # REMOVED: 'recommended_card': ['PLACEHOLDER'] - This was the problem!
             })
             
             try:
-                X_pred, _, _ = st.session_state.trained_model.prepare_data(pred_data)
+                # FIXED: Call prepare_data without is_training flag (prediction mode)
+                X_pred, _, _ = st.session_state.trained_model.prepare_data(pred_data, is_training=False)
                 pred, prob = st.session_state.trained_model.predict(X_pred)
                 
-                # FIXED: Safe recommendation with bounds checking
+                # Safe recommendation with bounds checking
                 n_classes = len(st.session_state.trained_model.label_encoder.classes_)
                 if pred[0] < 0 or pred[0] >= n_classes:
                     st.error(f"🚨 Model prediction {pred[0]} is out of valid range [0, {n_classes-1}]")
                     st.write("This indicates a training data issue. Please retrain the model.")
                 else:
+                    # FIXED: Now this will return actual credit card names, not PLACEHOLDER
                     recommended_card = st.session_state.trained_model.label_encoder.inverse_transform(pred)[0]
                     confidence = np.max(prob[0])
                     
-                    st.success(f"🎯 **Recommended**: {recommended_card}")
+                    st.success(f"🎯 **Recommended Credit Card**: {recommended_card}")
                     st.info(f"🎲 **Confidence**: {confidence:.2%}")
+                    
+                    # Debug info to verify it's working
+                    st.write("**🔍 Debug Info:**")
+                    st.write(f"- Predicted class index: {pred[0]}")
+                    st.write(f"- Available classes: {list(st.session_state.trained_model.label_encoder.classes_)}")
+                    st.write(f"- Predicted card: {recommended_card}")
                     
                     # Spending breakdown
                     total = sum([dining, grocery, fuel, ecommerce, utilities, travel, movies, other])
                     categories = ['Dining', 'Grocery', 'Fuel', 'E-commerce', 'Utilities', 'Travel', 'Movies', 'Other']
                     amounts = [dining, grocery, fuel, ecommerce, utilities, travel, movies, other]
                     
-                    fig = px.pie(values=amounts, names=categories, title=f"Spending Pattern (₹{total:,})")
+                    fig = px.pie(values=amounts, names=categories, title=f"Your Spending Pattern (₹{total:,})")
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Top 3 recommendations
                     top_3_idx = np.argsort(prob[0])[-3:][::-1]
-                    # FIXED: Ensure all indices are valid
                     top_3_idx = [idx for idx in top_3_idx if 0 <= idx < n_classes]
                     
                     if len(top_3_idx) > 0:
                         top_3_cards = st.session_state.trained_model.label_encoder.inverse_transform(top_3_idx)
                         
-                        st.subheader("🏆 Top 3 Recommendations")
+                        st.subheader("🏆 Top 3 Credit Card Recommendations")
                         for i, (card, conf) in enumerate(zip(top_3_cards, prob[0][top_3_idx])):
                             icon = ["🥇", "🥈", "🥉"][i]
-                            st.write(f"{icon} **{card}**: {conf:.2%}")
+                            st.write(f"{icon} **{card}**: {conf:.2%} confidence")
                     
             except Exception as e:
                 st.error(f"❌ Prediction failed: {str(e)}")
@@ -578,30 +589,30 @@ with tab_predict:
                 
                 st.write("**💡 Suggested Fix:** Use Emergency Reset and retrain")
                 
-        # FIXED: Batch predictions with proper session state checking
+        # FIXED: Batch predictions
         st.subheader("📋 Batch Predictions")
         batch_file = st.file_uploader("Upload batch file", type=['csv', 'xlsx'])
         if batch_file and st.button("Process Batch"):
             batch_df = pd.read_excel(batch_file) if batch_file.name.endswith('.xlsx') else pd.read_csv(batch_file)
             
-            if 'recommended_card' not in batch_df.columns:
-                batch_df['recommended_card'] = 'PLACEHOLDER'
+            # REMOVED: Don't add placeholder column
+            # if 'recommended_card' not in batch_df.columns:
+            #     batch_df['recommended_card'] = 'PLACEHOLDER'
             
             try:
-                # FIXED: Safe session state access
                 if st.session_state.trained_model is not None:
-                    X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df)
+                    X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df, is_training=False)
                     batch_pred, batch_prob = st.session_state.trained_model.predict(X_batch)
                     
+                    # FIXED: Now will show actual credit card names
                     batch_df['predicted_card'] = st.session_state.trained_model.label_encoder.inverse_transform(batch_pred)
                     batch_df['confidence'] = np.max(batch_prob, axis=1)
                     
                     st.success(f"✅ Processed {len(batch_df)} predictions")
                     
-                    # Display results with proper column checking
-                    display_cols = ['user_id', 'predicted_card', 'confidence']
-                    if 'user_id' not in batch_df.columns:
-                        display_cols = ['predicted_card', 'confidence']
+                    display_cols = ['predicted_card', 'confidence']
+                    if 'user_id' in batch_df.columns:
+                        display_cols = ['user_id'] + display_cols
                     
                     st.dataframe(batch_df[display_cols])
                     
@@ -637,5 +648,4 @@ if st.session_state.trained_model is not None:
 
 # Footer
 st.markdown("---")
-st.markdown("💡 **Tip**: Use the Emergency Reset button if you encounter persistent errors.")
-st.markdown("🔍 **Debug**: Check session state keys - train_df, val_df, test_df should exist after upload.")
+st.markdown("💡 **Fixed**: Placeholder issue resolved - now shows actual credit card names!")

@@ -1,6 +1,6 @@
 ################################################################################
-#           ML Credit Card Recommender - Optimized Version 5.2                #
-#                          (Redundancies Removed)                             #
+#           ML Credit Card Recommender - Complete Fixed Version 5.3           #
+#                          (All Issues Resolved)                              #
 ################################################################################
 
 import streamlit as st
@@ -30,7 +30,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Initialize all session state variables in one place
+# Initialize all session state variables
 session_vars = ['trained_model', 'training_metrics', 'validation_metrics', 'test_metrics']
 for var in session_vars:
     if var not in st.session_state:
@@ -78,16 +78,26 @@ class MLRecommender:
         self.feature_columns = None
         
     def _create_model(self, model_type, hyperparameters):
-        models = {
-            "Random Forest": RandomForestClassifier(**hyperparameters, random_state=42),
-            "Gradient Boosting": GradientBoostingClassifier(**hyperparameters, random_state=42),
-            "Logistic Regression": LogisticRegression(**hyperparameters, random_state=42, max_iter=2000),
-            "SVM": SVC(**hyperparameters, random_state=42, probability=True),
-            "Decision Tree": DecisionTreeClassifier(**hyperparameters, random_state=42),
-            "K-Nearest Neighbors": KNeighborsClassifier(**hyperparameters),
-            "Naive Bayes": GaussianNB(**hyperparameters)
-        }
-        return models[model_type]
+        """Create model with parameter validation"""
+        try:
+            models = {
+                "Random Forest": RandomForestClassifier(**hyperparameters, random_state=42),
+                "Gradient Boosting": GradientBoostingClassifier(**hyperparameters, random_state=42),
+                "Logistic Regression": LogisticRegression(**hyperparameters, random_state=42),
+                "SVM": SVC(**hyperparameters, random_state=42),
+                "Decision Tree": DecisionTreeClassifier(**hyperparameters, random_state=42),
+                "K-Nearest Neighbors": KNeighborsClassifier(**hyperparameters),
+                "Naive Bayes": GaussianNB(**hyperparameters)
+            }
+            return models[model_type]
+        except TypeError as e:
+            st.error(f"❌ Parameter error for {model_type}: {str(e)}")
+            st.write(f"Received parameters: {hyperparameters}")
+            # Return default model as fallback
+            if model_type == "Logistic Regression":
+                return LogisticRegression(random_state=42, max_iter=2000)
+            else:
+                raise e
     
     def prepare_data(self, df):
         """Prepare data for training/prediction"""
@@ -132,61 +142,22 @@ class MLRecommender:
         return None
 
 # ──────────────────────────────────────────────────────────────────────────────
-#  HYPERPARAMETER CONFIGURATION
-# ──────────────────────────────────────────────────────────────────────────────
-def get_hyperparameters(model_type):
-    """Centralized hyperparameter configuration"""
-    configs = {
-        "Random Forest": {
-            'n_estimators': st.slider("Trees", 10, 500, 100, 10),
-            'max_depth': st.slider("Max Depth", 3, 30, 10),
-            'min_samples_split': st.slider("Min Split", 2, 20, 5),
-            'min_samples_leaf': st.slider("Min Leaf", 1, 10, 2),
-            'max_features': st.selectbox("Max Features", ['sqrt', 'log2', 'auto'])
-        },
-        "Gradient Boosting": {
-            'n_estimators': st.slider("Boosting Stages", 50, 500, 100, 10),
-            'learning_rate': st.slider("Learning Rate", 0.01, 0.3, 0.1, 0.01),
-            'max_depth': st.slider("Max Depth", 3, 15, 6),
-            'subsample': st.slider("Subsample", 0.5, 1.0, 0.8, 0.1)
-        },
-        "Logistic Regression": {
-            'C': st.slider("Regularization (C)", 0.01, 100.0, 1.0, 0.01),
-            'penalty': st.selectbox("Penalty", ['l2', 'l1', 'elasticnet', None]),
-            'solver': st.selectbox("Solver", ['liblinear', 'lbfgs', 'saga'])
-        },
-        "SVM": {
-            'C': st.slider("C Parameter", 0.1, 100.0, 1.0, 0.1),
-            'kernel': st.selectbox("Kernel", ['rbf', 'linear', 'poly', 'sigmoid']),
-            'gamma': st.selectbox("Gamma", ['scale', 'auto']) if st.selectbox("Kernel", ['rbf', 'linear', 'poly', 'sigmoid']) == 'rbf' else 'scale'
-        },
-        "Decision Tree": {
-            'max_depth': st.slider("Max Depth", 3, 30, 10),
-            'min_samples_split': st.slider("Min Split", 2, 20, 5),
-            'min_samples_leaf': st.slider("Min Leaf", 1, 10, 2),
-            'criterion': st.selectbox("Criterion", ['gini', 'entropy'])
-        },
-        "K-Nearest Neighbors": {
-            'n_neighbors': st.slider("Neighbors", 3, 50, 5),
-            'weights': st.selectbox("Weights", ['uniform', 'distance']),
-            'algorithm': st.selectbox("Algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
-        },
-        "Naive Bayes": {
-            'var_smoothing': st.slider("Smoothing", 1e-12, 1e-6, 1e-9, 1e-11)
-        }
-    }
-    return configs.get(model_type, {})
-
-# ──────────────────────────────────────────────────────────────────────────────
 #  STREAMLIT UI
 # ──────────────────────────────────────────────────────────────────────────────
 st.title("🤖 ML Credit Card Recommender")
 st.markdown("**Advanced Machine Learning with Hyperparameter Tuning**")
 
 # Sidebar Configuration
-# Sidebar Configuration (Replace lines 190-195)
 with st.sidebar:
     st.header("🎛️ Model Configuration")
+    
+    # Clear button to reset everything
+    if st.button("🔄 Reset Configuration"):
+        for key in list(st.session_state.keys()):
+            if key.startswith(('trained_', 'hyperparams_')):
+                del st.session_state[key]
+        st.rerun()
+    
     model_type = st.selectbox("ML Algorithm", 
         ["Random Forest", "Gradient Boosting", "Logistic Regression", "SVM", 
          "Decision Tree", "K-Nearest Neighbors", "Naive Bayes"])
@@ -194,50 +165,63 @@ with st.sidebar:
     
     st.subheader("🔧 Hyperparameters")
     
-    # Create hyperparameters directly here to avoid function complexity
+    # FIXED: Clear hyperparameters for each model type to prevent mixing
     hyperparameters = {}
     
     if model_type == "Random Forest":
-        hyperparameters['n_estimators'] = st.slider("Trees", 10, 500, 100, 10)
-        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 30, 10)
-        hyperparameters['min_samples_split'] = st.slider("Min Split", 2, 20, 5)
-        hyperparameters['min_samples_leaf'] = st.slider("Min Leaf", 1, 10, 2)
-        hyperparameters['max_features'] = st.selectbox("Max Features", ['sqrt', 'log2', 'auto'])
+        hyperparameters = {
+            'n_estimators': st.slider("Trees", 10, 500, 100, 10),
+            'max_depth': st.slider("Max Depth", 3, 30, 10),
+            'min_samples_split': st.slider("Min Split", 2, 20, 5),
+            'min_samples_leaf': st.slider("Min Leaf", 1, 10, 2),
+            'max_features': st.selectbox("Max Features", ['sqrt', 'log2', 'auto'])
+        }
         
     elif model_type == "Gradient Boosting":
-        hyperparameters['n_estimators'] = st.slider("Boosting Stages", 50, 500, 100, 10)
-        hyperparameters['learning_rate'] = st.slider("Learning Rate", 0.01, 0.3, 0.1, 0.01)
-        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 15, 6)
-        hyperparameters['subsample'] = st.slider("Subsample", 0.5, 1.0, 0.8, 0.1)
+        hyperparameters = {
+            'n_estimators': st.slider("Boosting Stages", 50, 500, 100, 10),
+            'learning_rate': st.slider("Learning Rate", 0.01, 0.3, 0.1, 0.01),
+            'max_depth': st.slider("Max Depth", 3, 15, 6),
+            'subsample': st.slider("Subsample", 0.5, 1.0, 0.8, 0.1)
+        }
         
     elif model_type == "Logistic Regression":
-        hyperparameters['C'] = st.slider("Regularization (C)", 0.01, 100.0, 1.0, 0.01)
-        hyperparameters['penalty'] = st.selectbox("Penalty", ['l2', 'l1', 'elasticnet', None])
-        hyperparameters['solver'] = st.selectbox("Solver", ['liblinear', 'lbfgs', 'saga'])
+        hyperparameters = {
+            'C': st.slider("Regularization (C)", 0.01, 100.0, 1.0, 0.01),
+            'penalty': st.selectbox("Penalty", ['l2', 'l1', 'elasticnet', None]),
+            'solver': st.selectbox("Solver", ['liblinear', 'lbfgs', 'saga']),
+            'max_iter': 2000  # Fixed: Add this to prevent convergence issues
+        }
         
     elif model_type == "SVM":
-        hyperparameters['C'] = st.slider("C Parameter", 0.1, 100.0, 1.0, 0.1)
-        hyperparameters['kernel'] = st.selectbox("Kernel", ['rbf', 'linear', 'poly', 'sigmoid'])
-        # Only show gamma if rbf kernel is selected
-        if hyperparameters['kernel'] == 'rbf':
+        kernel = st.selectbox("Kernel", ['rbf', 'linear', 'poly', 'sigmoid'])
+        hyperparameters = {
+            'C': st.slider("C Parameter", 0.1, 100.0, 1.0, 0.1),
+            'kernel': kernel,
+            'probability': True  # Required for predict_proba
+        }
+        if kernel == 'rbf':
             hyperparameters['gamma'] = st.selectbox("Gamma", ['scale', 'auto'])
-        else:
-            hyperparameters['gamma'] = 'scale'  # Default for non-rbf kernels
             
     elif model_type == "Decision Tree":
-        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 30, 10)
-        hyperparameters['min_samples_split'] = st.slider("Min Split", 2, 20, 5)
-        hyperparameters['min_samples_leaf'] = st.slider("Min Leaf", 1, 10, 2)
-        hyperparameters['criterion'] = st.selectbox("Criterion", ['gini', 'entropy'])
+        hyperparameters = {
+            'max_depth': st.slider("Max Depth", 3, 30, 10),
+            'min_samples_split': st.slider("Min Split", 2, 20, 5),
+            'min_samples_leaf': st.slider("Min Leaf", 1, 10, 2),
+            'criterion': st.selectbox("Criterion", ['gini', 'entropy'])
+        }
         
     elif model_type == "K-Nearest Neighbors":
-        hyperparameters['n_neighbors'] = st.slider("Neighbors", 3, 50, 5)
-        hyperparameters['weights'] = st.selectbox("Weights", ['uniform', 'distance'])
-        hyperparameters['algorithm'] = st.selectbox("Algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+        hyperparameters = {
+            'n_neighbors': st.slider("Neighbors", 3, 50, 5),
+            'weights': st.selectbox("Weights", ['uniform', 'distance']),
+            'algorithm': st.selectbox("Algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+        }
         
     elif model_type == "Naive Bayes":
-        hyperparameters['var_smoothing'] = st.slider("Smoothing", 1e-12, 1e-6, 1e-9, 1e-11)
-
+        hyperparameters = {
+            'var_smoothing': st.slider("Smoothing", 1e-12, 1e-6, 1e-9, 1e-11)
+        }
 
 # Main Tabs
 tab_data, tab_train, tab_evaluate, tab_predict = st.tabs([
@@ -247,18 +231,35 @@ tab_data, tab_train, tab_evaluate, tab_predict = st.tabs([
 # Data Upload Tab
 with tab_data:
     st.header("📊 Upload Datasets")
-    uploaded_files = {}
     
-    for dataset_type, key in [("Training", "train"), ("Validation", "val"), ("Test", "test")]:
-        col = st.columns(1)[0]
-        with col:
-            st.subheader(f"{dataset_type} Set")
-            file = st.file_uploader(f"Upload {dataset_type} Data", type=['csv', 'xlsx'], key=key)
-            if file:
-                df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
-                st.success(f"✅ Loaded {len(df)} samples")
-                st.dataframe(df.head(3), use_container_width=True)
-                st.session_state[f'{key}_df'] = df
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("Training Set")
+        train_file = st.file_uploader("Upload Training Data", type=['csv', 'xlsx'], key='train')
+        if train_file:
+            df = pd.read_excel(train_file) if train_file.name.endswith('.xlsx') else pd.read_csv(train_file)
+            st.success(f"✅ Loaded {len(df)} samples")
+            st.dataframe(df.head(3), use_container_width=True)
+            st.session_state.train_df = df
+    
+    with col2:
+        st.subheader("Validation Set")
+        val_file = st.file_uploader("Upload Validation Data", type=['csv', 'xlsx'], key='val')
+        if val_file:
+            df = pd.read_excel(val_file) if val_file.name.endswith('.xlsx') else pd.read_csv(val_file)
+            st.success(f"✅ Loaded {len(df)} samples")
+            st.dataframe(df.head(3), use_container_width=True)
+            st.session_state.val_df = df
+    
+    with col3:
+        st.subheader("Test Set")
+        test_file = st.file_uploader("Upload Test Data", type=['csv', 'xlsx'], key='test')
+        if test_file:
+            df = pd.read_excel(test_file) if test_file.name.endswith('.xlsx') else pd.read_csv(test_file)
+            st.success(f"✅ Loaded {len(df)} samples")
+            st.dataframe(df.head(3), use_container_width=True)
+            st.session_state.test_df = df
 
 # Training Tab
 with tab_train:
@@ -406,6 +407,18 @@ with tab_evaluate:
                                                      output_dict=True)
                         st.dataframe(pd.DataFrame(report).transpose().round(3))
                         
+                        # FIXED: Prediction confidence distribution
+                        try:
+                            max_probs = np.max(eval_prob, axis=1)
+                            if len(max_probs) > 0:
+                                fig = px.histogram(x=max_probs, nbins=30,  # Fixed: Use nbins instead of bins
+                                                  title="Distribution of Maximum Prediction Probabilities")
+                                fig.update_xaxes(title="Maximum Probability")
+                                fig.update_yaxes(title="Count")
+                                st.plotly_chart(fig, use_container_width=True)
+                        except Exception as e:
+                            st.warning(f"Could not create probability histogram: {str(e)}")
+                        
                     except Exception as e:
                         st.error(f"Evaluation failed: {str(e)}")
     else:
@@ -442,32 +455,54 @@ with tab_predict:
                 X_pred, _, _ = st.session_state.trained_model.prepare_data(pred_data)
                 pred, prob = st.session_state.trained_model.predict(X_pred)
                 
-                # Safe recommendation
-                recommended_card = st.session_state.trained_model.label_encoder.inverse_transform(pred)[0]
-                confidence = np.max(prob[0])
-                
-                st.success(f"🎯 **Recommended**: {recommended_card}")
-                st.info(f"🎲 **Confidence**: {confidence:.2%}")
-                
-                # Spending breakdown
-                total = sum([dining, grocery, fuel, ecommerce, utilities, travel, movies, other])
-                categories = ['Dining', 'Grocery', 'Fuel', 'E-commerce', 'Utilities', 'Travel', 'Movies', 'Other']
-                amounts = [dining, grocery, fuel, ecommerce, utilities, travel, movies, other]
-                
-                fig = px.pie(values=amounts, names=categories, title=f"Spending Pattern (₹{total:,})")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Top 3 recommendations
-                top_3_idx = np.argsort(prob[0])[-3:][::-1]
-                top_3_cards = st.session_state.trained_model.label_encoder.inverse_transform(top_3_idx)
-                
-                st.subheader("🏆 Top 3 Recommendations")
-                for i, (card, conf) in enumerate(zip(top_3_cards, prob[0][top_3_idx])):
-                    icon = ["🥇", "🥈", "🥉"][i]
-                    st.write(f"{icon} **{card}**: {conf:.2%}")
+                # FIXED: Safe recommendation with bounds checking
+                n_classes = len(st.session_state.trained_model.label_encoder.classes_)
+                if pred[0] < 0 or pred[0] >= n_classes:
+                    st.error(f"🚨 Model prediction {pred[0]} is out of valid range [0, {n_classes-1}]")
+                    st.write("This indicates a training data issue. Please retrain the model.")
+                else:
+                    recommended_card = st.session_state.trained_model.label_encoder.inverse_transform(pred)[0]
+                    confidence = np.max(prob[0])
+                    
+                    st.success(f"🎯 **Recommended**: {recommended_card}")
+                    st.info(f"🎲 **Confidence**: {confidence:.2%}")
+                    
+                    # Spending breakdown
+                    total = sum([dining, grocery, fuel, ecommerce, utilities, travel, movies, other])
+                    categories = ['Dining', 'Grocery', 'Fuel', 'E-commerce', 'Utilities', 'Travel', 'Movies', 'Other']
+                    amounts = [dining, grocery, fuel, ecommerce, utilities, travel, movies, other]
+                    
+                    fig = px.pie(values=amounts, names=categories, title=f"Spending Pattern (₹{total:,})")
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Top 3 recommendations
+                    top_3_idx = np.argsort(prob[0])[-3:][::-1]
+                    # FIXED: Ensure all indices are valid
+                    top_3_idx = [idx for idx in top_3_idx if 0 <= idx < n_classes]
+                    
+                    if len(top_3_idx) > 0:
+                        top_3_cards = st.session_state.trained_model.label_encoder.inverse_transform(top_3_idx)
+                        
+                        st.subheader("🏆 Top 3 Recommendations")
+                        for i, (card, conf) in enumerate(zip(top_3_cards, prob[0][top_3_idx])):
+                            icon = ["🥇", "🥈", "🥉"][i]
+                            st.write(f"{icon} **{card}**: {conf:.2%}")
                     
             except Exception as e:
-                st.error(f"Prediction failed: {str(e)}")
+                st.error(f"❌ Prediction failed: {str(e)}")
+                
+                # Enhanced debugging
+                st.write("**🔍 Debugging Information:**")
+                if 'pred' in locals():
+                    st.write(f"- Raw prediction: {pred}")
+                    st.write(f"- Prediction type: {type(pred[0])}")
+                
+                if st.session_state.trained_model:
+                    classes = st.session_state.trained_model.label_encoder.classes_
+                    st.write(f"- Available classes: {list(classes)}")
+                    st.write(f"- Valid class indices: 0 to {len(classes)-1}")
+                
+                st.write("**💡 Suggested Fix:** Retrain the model with consistent data")
                 
         # Batch predictions
         st.subheader("📋 Batch Predictions")
@@ -478,18 +513,21 @@ with tab_predict:
             if 'recommended_card' not in batch_df.columns:
                 batch_df['recommended_card'] = 'PLACEHOLDER'
             
-            X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df)
-            batch_pred, batch_prob = st.session_state.trained_model.predict(X_batch)
-            
-            batch_df['predicted_card'] = st.session_state.trained_model.label_encoder.inverse_transform(batch_pred)
-            batch_df['confidence'] = np.max(batch_prob, axis=1)
-            
-            st.success(f"✅ Processed {len(batch_df)} predictions")
-            st.dataframe(batch_df[['user_id', 'predicted_card', 'confidence']])
-            
-            # Download results
-            csv = batch_df.to_csv(index=False)
-            st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+            try:
+                X_batch, _, _ = st.session_state.trained_model.prepare_data(batch_df)
+                batch_pred, batch_prob = st.session_state.trained_model.predict(X_batch)
+                
+                batch_df['predicted_card'] = st.session_state.trained_model.label_encoder.inverse_transform(batch_pred)
+                batch_df['confidence'] = np.max(batch_prob, axis=1)
+                
+                st.success(f"✅ Processed {len(batch_df)} predictions")
+                st.dataframe(batch_df[['user_id', 'predicted_card', 'confidence']])
+                
+                # Download results
+                csv = batch_df.to_csv(index=False)
+                st.download_button("📥 Download Results", csv, "predictions.csv", "text/csv")
+            except Exception as e:
+                st.error(f"Batch processing failed: {str(e)}")
     else:
         st.warning("Train a model first!")
 

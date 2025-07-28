@@ -184,6 +184,7 @@ st.title("🤖 ML Credit Card Recommender")
 st.markdown("**Advanced Machine Learning with Hyperparameter Tuning**")
 
 # Sidebar Configuration
+# Sidebar Configuration (Replace lines 190-195)
 with st.sidebar:
     st.header("🎛️ Model Configuration")
     model_type = st.selectbox("ML Algorithm", 
@@ -192,7 +193,51 @@ with st.sidebar:
     scaler_type = st.selectbox("Feature Scaling", ["standard", "minmax"])
     
     st.subheader("🔧 Hyperparameters")
-    hyperparameters = get_hyperparameters(model_type)
+    
+    # Create hyperparameters directly here to avoid function complexity
+    hyperparameters = {}
+    
+    if model_type == "Random Forest":
+        hyperparameters['n_estimators'] = st.slider("Trees", 10, 500, 100, 10)
+        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 30, 10)
+        hyperparameters['min_samples_split'] = st.slider("Min Split", 2, 20, 5)
+        hyperparameters['min_samples_leaf'] = st.slider("Min Leaf", 1, 10, 2)
+        hyperparameters['max_features'] = st.selectbox("Max Features", ['sqrt', 'log2', 'auto'])
+        
+    elif model_type == "Gradient Boosting":
+        hyperparameters['n_estimators'] = st.slider("Boosting Stages", 50, 500, 100, 10)
+        hyperparameters['learning_rate'] = st.slider("Learning Rate", 0.01, 0.3, 0.1, 0.01)
+        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 15, 6)
+        hyperparameters['subsample'] = st.slider("Subsample", 0.5, 1.0, 0.8, 0.1)
+        
+    elif model_type == "Logistic Regression":
+        hyperparameters['C'] = st.slider("Regularization (C)", 0.01, 100.0, 1.0, 0.01)
+        hyperparameters['penalty'] = st.selectbox("Penalty", ['l2', 'l1', 'elasticnet', None])
+        hyperparameters['solver'] = st.selectbox("Solver", ['liblinear', 'lbfgs', 'saga'])
+        
+    elif model_type == "SVM":
+        hyperparameters['C'] = st.slider("C Parameter", 0.1, 100.0, 1.0, 0.1)
+        hyperparameters['kernel'] = st.selectbox("Kernel", ['rbf', 'linear', 'poly', 'sigmoid'])
+        # Only show gamma if rbf kernel is selected
+        if hyperparameters['kernel'] == 'rbf':
+            hyperparameters['gamma'] = st.selectbox("Gamma", ['scale', 'auto'])
+        else:
+            hyperparameters['gamma'] = 'scale'  # Default for non-rbf kernels
+            
+    elif model_type == "Decision Tree":
+        hyperparameters['max_depth'] = st.slider("Max Depth", 3, 30, 10)
+        hyperparameters['min_samples_split'] = st.slider("Min Split", 2, 20, 5)
+        hyperparameters['min_samples_leaf'] = st.slider("Min Leaf", 1, 10, 2)
+        hyperparameters['criterion'] = st.selectbox("Criterion", ['gini', 'entropy'])
+        
+    elif model_type == "K-Nearest Neighbors":
+        hyperparameters['n_neighbors'] = st.slider("Neighbors", 3, 50, 5)
+        hyperparameters['weights'] = st.selectbox("Weights", ['uniform', 'distance'])
+        hyperparameters['algorithm'] = st.selectbox("Algorithm", ['auto', 'ball_tree', 'kd_tree', 'brute'])
+        
+    elif model_type == "Naive Bayes":
+        hyperparameters['var_smoothing'] = st.slider("Smoothing", 1e-12, 1e-6, 1e-9, 1e-11)
+
 
 # Main Tabs
 tab_data, tab_train, tab_evaluate, tab_predict = st.tabs([

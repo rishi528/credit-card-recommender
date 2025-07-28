@@ -1,6 +1,6 @@
 ################################################################################
-#           ML Credit Card Recommender - Complete Fixed Version 5.3           #
-#                          (All Issues Resolved)                              #
+#           ML Credit Card Recommender - Complete Updated Version 5.4         #
+#                    (All Issues Fixed - Emergency Reset Added)               #
 ################################################################################
 
 import streamlit as st
@@ -18,6 +18,7 @@ from sklearn.model_selection import cross_val_score
 import plotly.express as px
 import seaborn as sns
 import matplotlib.pyplot as plt
+import gc
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -72,32 +73,75 @@ def engineer_features(df):
 class MLRecommender:
     def __init__(self, model_type, hyperparameters, scaler_type='standard'):
         self.model_type = model_type
-        self.model = self._create_model(model_type, hyperparameters)
+        self.hyperparameters = hyperparameters
+        self.scaler_type = scaler_type
+        
+        # Debug: Show what we're actually receiving
+        st.write(f"🔍 **Debug**: Creating {model_type} with parameters: {hyperparameters}")
+        
+        self.model = self._create_model()
         self.label_encoder = LabelEncoder()
         self.scaler = StandardScaler() if scaler_type == 'standard' else MinMaxScaler()
         self.feature_columns = None
         
-    def _create_model(self, model_type, hyperparameters):
-        """Create model with parameter validation"""
+    def _create_model(self):
+        """Create model with explicit parameter validation"""
+        model_type = self.model_type
+        params = self.hyperparameters.copy()  # Create a copy to avoid mutation
+        
+        st.write(f"🔍 **Creating Model**: {model_type}")
+        st.write(f"🔍 **Parameters**: {params}")
+        
         try:
-            models = {
-                "Random Forest": RandomForestClassifier(**hyperparameters, random_state=42),
-                "Gradient Boosting": GradientBoostingClassifier(**hyperparameters, random_state=42),
-                "Logistic Regression": LogisticRegression(**hyperparameters, random_state=42),
-                "SVM": SVC(**hyperparameters, random_state=42),
-                "Decision Tree": DecisionTreeClassifier(**hyperparameters, random_state=42),
-                "K-Nearest Neighbors": KNeighborsClassifier(**hyperparameters),
-                "Naive Bayes": GaussianNB(**hyperparameters)
-            }
-            return models[model_type]
-        except TypeError as e:
-            st.error(f"❌ Parameter error for {model_type}: {str(e)}")
-            st.write(f"Received parameters: {hyperparameters}")
-            # Return default model as fallback
-            if model_type == "Logistic Regression":
-                return LogisticRegression(random_state=42, max_iter=2000)
+            if model_type == "Random Forest":
+                # Validate RF parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['n_estimators', 'max_depth', 'min_samples_split', 
+                                     'min_samples_leaf', 'max_features']}
+                return RandomForestClassifier(**valid_params, random_state=42)
+                
+            elif model_type == "Gradient Boosting":
+                # Validate GB parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['n_estimators', 'learning_rate', 'max_depth', 'subsample']}
+                return GradientBoostingClassifier(**valid_params, random_state=42)
+                
+            elif model_type == "Logistic Regression":
+                # Validate LR parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['C', 'penalty', 'solver', 'max_iter']}
+                return LogisticRegression(**valid_params, random_state=42)
+                
+            elif model_type == "SVM":
+                # Validate SVM parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['C', 'kernel', 'gamma', 'probability']}
+                return SVC(**valid_params, random_state=42)
+                
+            elif model_type == "Decision Tree":
+                # Validate DT parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['max_depth', 'min_samples_split', 'min_samples_leaf', 'criterion']}
+                return DecisionTreeClassifier(**valid_params, random_state=42)
+                
+            elif model_type == "K-Nearest Neighbors":
+                # Validate KNN parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['n_neighbors', 'weights', 'algorithm']}
+                return KNeighborsClassifier(**valid_params)
+                
+            elif model_type == "Naive Bayes":
+                # Validate NB parameters
+                valid_params = {k: v for k, v in params.items() 
+                              if k in ['var_smoothing']}
+                return GaussianNB(**valid_params)
             else:
-                raise e
+                raise ValueError(f"Unknown model type: {model_type}")
+                
+        except Exception as e:
+            st.error(f"❌ Failed to create {model_type}: {str(e)}")
+            st.write(f"**Attempted parameters**: {params}")
+            raise e
     
     def prepare_data(self, df):
         """Prepare data for training/prediction"""
@@ -149,9 +193,18 @@ st.markdown("**Advanced Machine Learning with Hyperparameter Tuning**")
 
 # Sidebar Configuration
 with st.sidebar:
+    # EMERGENCY RESET BUTTON
+    if st.button("🔥 EMERGENCY RESET", type="secondary"):
+        # Clear ALL session state
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        gc.collect()
+        st.success("🔄 All data cleared! Page will refresh.")
+        st.rerun()
+    
     st.header("🎛️ Model Configuration")
     
-    # Clear button to reset everything
+    # Clear button to reset configuration
     if st.button("🔄 Reset Configuration"):
         for key in list(st.session_state.keys()):
             if key.startswith(('trained_', 'hyperparams_')):
@@ -282,6 +335,13 @@ with tab_train:
             st.plotly_chart(fig, use_container_width=True)
         
         if st.button("🚀 Train Model", type="primary"):
+            # CRITICAL: Clear any cached model instances
+            if 'trained_model' in st.session_state:
+                del st.session_state.trained_model
+            
+            # Force garbage collection
+            gc.collect()
+            
             # Data consistency check
             datasets = [train_data]
             if 'val_df' in st.session_state:
@@ -302,7 +362,10 @@ with tab_train:
             
             with st.spinner(f"Training {model_type}..."):
                 try:
-                    # Initialize and train
+                    st.write(f"🔍 **About to create**: {model_type}")
+                    st.write(f"🔍 **With parameters**: {hyperparameters}")
+                    
+                    # Initialize and train with explicit parameters
                     recommender = MLRecommender(model_type, hyperparameters, scaler_type)
                     X_train, y_train, feature_cols = recommender.prepare_data(train_data)
                     recommender.train(X_train, y_train)
@@ -336,6 +399,9 @@ with tab_train:
                     
                 except Exception as e:
                     st.error(f"Training failed: {str(e)}")
+                    st.write("**🔍 Debug Info:**")
+                    st.write(f"- Model Type: {model_type}")
+                    st.write(f"- Hyperparameters: {hyperparameters}")
     else:
         st.warning("Upload training data first!")
 
@@ -502,7 +568,7 @@ with tab_predict:
                     st.write(f"- Available classes: {list(classes)}")
                     st.write(f"- Valid class indices: 0 to {len(classes)-1}")
                 
-                st.write("**💡 Suggested Fix:** Retrain the model with consistent data")
+                st.write("**💡 Suggested Fix:** Use Emergency Reset and retrain")
                 
         # Batch predictions
         st.subheader("📋 Batch Predictions")
@@ -545,3 +611,7 @@ if st.session_state.trained_model:
     
     if st.session_state.test_metrics:
         st.sidebar.metric("Test", f"{st.session_state.test_metrics['accuracy']:.3f}")
+
+# Footer
+st.markdown("---")
+st.markdown("💡 **Tip**: Use the Emergency Reset button if you encounter persistent errors.")

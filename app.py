@@ -499,26 +499,33 @@ with tab_predict:
             movies = st.number_input("Movies Spending (₹)", min_value=0, value=800, step=100)
             other = st.number_input("Other Spending (₹)", min_value=0, value=5000, step=100)
         
-        if st.button("🎯 Get Credit Card Recommendation"):
-            # Create prediction data
-            pred_data = pd.DataFrame({
-                'user_id': [999],
-                'Dining': [dining],
-                'Grocery': [grocery],
-                'Fuel': [fuel],
-                'E-commerce': [ecommerce],
-                'Utilities': [utilities],
-                'Travel': [travel],
-                'Movies': [movies],
-                'Other': [other],
-                'recommended_card': ['Unknown']  # Placeholder
-            })
-            
-            # Make prediction
-            X_pred, _, _ = st.session_state.trained_model.prepare_data(pred_data)
-            pred, prob = st.session_state.trained_model.predict(X_pred)
-            
-            # Get card name
+if st.button("🎯 Get Credit Card Recommendation"):
+    # Create prediction data
+    pred_data = pd.DataFrame({
+        'user_id': [999],
+        'Dining': [dining],
+        'Grocery': [grocery],
+        'Fuel': [fuel],
+        'E-commerce': [ecommerce],
+        'Utilities': [utilities],
+        'Travel': [travel],
+        'Movies': [movies],
+        'Other': [other],
+        'recommended_card': ['PLACEHOLDER']  # Required for data processing
+    })
+    
+    try:
+        # Make prediction
+        X_pred, _, _ = st.session_state.trained_model.prepare_data(pred_data)
+        pred, prob = st.session_state.trained_model.predict(X_pred)
+        
+        # Validate prediction is within bounds
+        n_classes = len(st.session_state.trained_model.label_encoder.classes_)
+        if pred[0] < 0 or pred[0] >= n_classes:
+            st.error(f"🚨 Model prediction {pred[0]} is out of valid range [0, {n_classes-1}]")
+            st.write("This indicates a training data issue. Please retrain the model.")
+        else:
+            # Safe inverse transform
             recommended_card = st.session_state.trained_model.label_encoder.inverse_transform(pred)[0]
             confidence = np.max(prob[0])
             
@@ -543,13 +550,34 @@ with tab_predict:
             
             # Show top 3 predictions
             top_3_idx = np.argsort(prob[0])[-3:][::-1]
-            top_3_cards = st.session_state.trained_model.label_encoder.inverse_transform(top_3_idx)
-            top_3_prob = prob[0][top_3_idx]
+            # Ensure all indices are valid
+            top_3_idx = [idx for idx in top_3_idx if 0 <= idx < n_classes]
             
-            st.subheader("🏆 Top 3 Credit Card Recommendations")
-            for i, (card, conf) in enumerate(zip(top_3_cards, top_3_prob)):
-                icon = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                st.write(f"{icon} **{card}**: {conf:.2%} confidence")
+            if len(top_3_idx) > 0:
+                top_3_cards = st.session_state.trained_model.label_encoder.inverse_transform(top_3_idx)
+                top_3_prob = prob[0][top_3_idx]
+                
+                st.subheader("🏆 Top 3 Credit Card Recommendations")
+                for i, (card, conf) in enumerate(zip(top_3_cards, top_3_prob)):
+                    icon = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
+                    st.write(f"{icon} **{card}**: {conf:.2%} confidence")
+        
+    except Exception as e:
+        st.error(f"❌ Prediction failed: {str(e)}")
+        
+        # Enhanced debugging
+        st.write("**🔍 Debugging Information:**")
+        if 'pred' in locals():
+            st.write(f"- Raw prediction: {pred}")
+            st.write(f"- Prediction type: {type(pred[0])}")
+        
+        if st.session_state.trained_model:
+            classes = st.session_state.trained_model.label_encoder.classes_
+            st.write(f"- Available classes: {list(classes)}")
+            st.write(f"- Valid class indices: 0 to {len(classes)-1}")
+        
+        st.write("**💡 Suggested Fix:** Retrain the model with consistent data")
+
         
         # Batch prediction option
         st.subheader("📋 Batch Predictions")
